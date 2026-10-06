@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RC Equipamentos · Catálogo</title>
+<meta name="description" content="Catálogo RC Equipamentos: equipamentos de musculação novos e seminovos, cardio e acessórios. Monte seu orçamento e envie pelo WhatsApp.">
+<meta property="og:title" content="RC Equipamentos · Catálogo">
+<meta property="og:description" content="Equipamentos novos, seminovos e acessórios. Monte seu orçamento e envie pelo WhatsApp.">
+<meta name="theme-color" content="#111214">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 60'%3E%3Cpolygon points='12,0 20,0 8,60 0,60' fill='%236B2A23'/%3E%3Cpolygon points='26,0 34,0 22,60 14,60' fill='%23A8382B'/%3E%3Cpolygon points='40,0 48,0 36,60 28,60' fill='%23E4402B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,700;1,800;1,900&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>body{margin:0}</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <div class="logo" aria-label="RC Equipamentos">
+      <svg viewBox="0 0 48 60" width="34" height="43" aria-hidden="true"><polygon points="12,0 20,0 8,60 0,60" fill="#6B2A23"></polygon><polygon points="26,0 34,0 22,60 14,60" fill="#A8382B"></polygon><polygon points="40,0 48,0 36,60 28,60" fill="#E4402B"></polygon></svg>
+      <div class="rc">RC</div>
+      <div class="bar"></div>
+      <div><div class="eq">EQUIPAMENTOS</div><div class="ds">NOVOS · SEMINOVOS · ACESSÓRIOS</div></div>
+    </div>
+    <div class="side">
+      <b>Catálogo de produtos</b>
+      <span id="contato">Consulte prazo de entrega</span>
+    </div>
+  </div>
+</header>
+
+<nav class="filters" aria-label="Filtros do catálogo">
+  <div class="wrap">
+    <div class="row">
+      <div class="seg" role="group" aria-label="Categoria" id="cats"></div>
+      <div class="grow"><input type="search" id="q" placeholder="Buscar por nome ou código (ex.: leg press, RC-F010)" aria-label="Buscar produto"></div>
+      <div class="seg sm" role="group" aria-label="Organizar por" id="modo"><button type="button" data-m="linha">Por linha</button><button type="button" data-m="tipo">Por tipo</button></div>
+      <select id="linha" aria-label="Filtro"></select>
+    </div>
+    <div class="row" id="grps" role="group" aria-label="Tipo de produto"></div>
+    <div class="row">
+      <div class="seg sm" role="group" aria-label="Condição" id="conds"><button type="button" data-k="" aria-pressed="true">Todos</button><button type="button" data-k="novo">Novos</button><button type="button" data-k="seminovo">Seminovos</button></div>
+    </div>
+  </div>
+</nav>
+
+<main><div class="wrap" id="list"><div class="loading">Carregando catálogo…</div></div></main>
+
+<footer class="foot"><div class="wrap">
+  <span>Valores sujeitos a alteração. Frete, montagem e instalação são combinados à parte.</span>
+  <span>RC Equipamentos · <span id="atual"></span></span>
+</div></footer>
+<div class="toast" id="toast" hidden></div>
+
+<div class="panel" id="recv" hidden role="dialog" aria-modal="true" aria-labelledby="rtitle"><div class="box wide">
+  <button class="x" id="closeRecv">Fechar ✕</button>
+  <div class="logo sm" aria-hidden="true"><svg viewBox="0 0 48 60" width="22" height="28"><polygon points="12,0 20,0 8,60 0,60" fill="#F3B3AA"></polygon><polygon points="26,0 34,0 22,60 14,60" fill="#EC7A6B"></polygon><polygon points="40,0 48,0 36,60 28,60" fill="#E4402B"></polygon></svg><span class="rc2">RC</span><span class="eq2">EQUIPAMENTOS</span></div>
+  <h3 id="rtitle">Orçamento</h3>
+  <p class="note">Valores atuais do catálogo.</p>
+  <div id="rlines"></div>
+  <div class="tot"><span>Total</span><span id="rTotal">R$ 0</span></div>
+  <div class="fld"><label for="rNome">Cliente</label><input class="inp" id="rNome"></div>
+  <div class="fld"><label for="rCidade">Cidade / UF</label><input class="inp" id="rCidade"></div>
+  <button class="btn pdfb" id="pdfRecv">Baixar PDF deste orçamento</button>
+</div></div>
+
+<div class="cartbar" id="cartbar" hidden><div class="in"><div><b id="cartTotal">R$ 0</b><br><span id="cartCount">0 itens no orçamento</span></div><button class="btn pri" id="openCart">Ver orçamento</button></div></div>
+
+<div class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="ptitle"><div class="box">
+  <button class="x" id="closeCart">Fechar ✕</button>
+  <h3 id="ptitle">Seu orçamento</h3>
+  <div id="lines"></div>
+  <div class="tot"><span>Total estimado</span><span id="pTotal">R$ 0</span></div>
+  <p class="note">Valores de referência do catálogo. Frete, montagem e instalação são combinados à parte. A RC confirma preço e prazo na resposta.</p>
+  <div class="fld"><label for="cNome">Seu nome</label><input class="inp" id="cNome" autocomplete="name"></div>
+  <div class="fld"><label for="cCidade">Cidade / UF</label><input class="inp" id="cCidade" autocomplete="address-level2"></div>
+  <div class="fld"><label for="cObs">Observações (opcional)</label><input class="inp" id="cObs" placeholder="Ex.: academia nova, preciso de entrega até março"></div>
+  <p class="note"><b>1.</b> Baixe o PDF com fotos, valores e validade. <b>2.</b> Toque no botão verde para abrir o WhatsApp da RC e anexe o PDF na conversa.</p>
+  <button class="btn pdfb" id="pdfCart">1 · Baixar orçamento em PDF</button>
+  <a class="wa" id="sendWa" href="#" target="_blank" rel="noopener">2 · Enviar pelo WhatsApp</a>
+  <button class="btn" id="copyCart">Copiar texto do orçamento</button>
+  <button class="btn" id="clearCart">Esvaziar orçamento</button>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="comum.js" defer></script>
+<script src="venda.js" defer></script>
+</body>
+</html>

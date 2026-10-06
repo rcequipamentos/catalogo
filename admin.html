@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Gestão · RC Equipamentos</title>
+<meta name="theme-color" content="#111214">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 60'%3E%3Cpolygon points='12,0 20,0 8,60 0,60' fill='%236B2A23'/%3E%3Cpolygon points='26,0 34,0 22,60 14,60' fill='%23A8382B'/%3E%3Cpolygon points='40,0 48,0 36,60 28,60' fill='%23E4402B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,700;1,800;1,900&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+body{margin:0}
+.adm main .wrap{gap:16px}
+.adm h1{font-family:var(--display);font-style:italic;font-weight:900;font-size:26px;margin:0}
+.adm h2{font-family:var(--display);font-style:italic;font-weight:800;font-size:19px;margin:0}
+.adm .help{font-size:13px;color:var(--muted);margin:0}
+.adm .help a{color:var(--red-ink)}
+.fldrow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.fldrow .fld{flex:1 1 180px;min-width:0}
+.sticky{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line)}
+.sticky .wrap{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding-block:10px}
+.sticky .status{flex:1 1 200px}
+.prow{display:grid;grid-template-columns:64px minmax(0,1fr) 110px 120px auto;gap:10px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.prow.off{opacity:.5}
+.prow .tb{width:64px;height:64px}
+.prow .nm{font-weight:700;font-size:14px;line-height:1.25}
+.prow .sub{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:3px}
+.prow .fld label{font-size:10.5px;letter-spacing:.06em}
+.prow .inp{padding:7px 9px}
+.prow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.btn.sm{font-size:12.5px;padding:7px 10px}
+.btn.ghost{background:transparent}
+.btn.dark{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (max-width:720px){.prow{grid-template-columns:56px minmax(0,1fr) minmax(0,1fr)}.prow .tb{width:56px;height:56px;grid-row:span 2}.prow .main{grid-column:2/-1}.prow .acts{grid-column:1/-1;justify-content:flex-start}}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
+.modal .box{background:var(--surface);color:var(--ink);width:min(680px,100%);border-radius:14px;padding:20px 16px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.photoPick{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.photoPick .tb{width:120px;height:120px}
+textarea.inp{min-height:70px;resize:vertical;font:500 14px var(--body)}
+.radio{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.radio label{display:flex;gap:6px;align-items:center;color:var(--ink);font-weight:500}
+.more{display:flex;justify-content:center;padding:14px 0}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kpi b{color:var(--ink);font-variant-numeric:tabular-nums}
+.danger{color:var(--red-ink);border-color:var(--red-ink)}
+</style>
+</head>
+<body class="adm">
+<header class="mast">
+  <div class="wrap">
+    <div class="logo" aria-label="RC Equipamentos">
+      <svg viewBox="0 0 48 60" width="30" height="38" aria-hidden="true"><polygon points="12,0 20,0 8,60 0,60" fill="#6B2A23"></polygon><polygon points="26,0 34,0 22,60 14,60" fill="#A8382B"></polygon><polygon points="40,0 48,0 36,60 28,60" fill="#E4402B"></polygon></svg>
+      <div class="rc" style="font-size:44px">RC</div>
+      <div class="bar"></div>
+      <div><div class="eq">EQUIPAMENTOS</div><div class="ds">GESTÃO DO CATÁLOGO</div></div>
+    </div>
+    <div class="side"><b>Área do administrador</b><span><a href="./" style="color:#fff">Ver catálogo dos clientes →</a></span></div>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<main id="loginView" hidden><div class="wrap">
+  <section class="card2">
+    <h1>Entrar</h1>
+    <p class="help">Preencha uma vez neste aparelho. Os dados ficam salvos só aqui. O token é a chave que permite salvar no GitHub; não compartilhe com ninguém.</p>
+    <div class="fldrow">
+      <div class="fld"><label for="lOwner">Usuário do GitHub</label><input class="inp" id="lOwner" autocomplete="username" placeholder="ex.: rcequipamentos"></div>
+      <div class="fld"><label for="lRepo">Repositório do site (público)</label><input class="inp" id="lRepo" placeholder="ex.: catalogo"></div>
+      <div class="fld"><label for="lPriv">Repositório de custos (privado)</label><input class="inp" id="lPriv" value="rc-custos"></div>
+    </div>
+    <div class="fld"><label for="lToken">Token de acesso (fine-grained, começa com github_pat_)</label><input class="inp" id="lToken" type="password" autocomplete="off" placeholder="github_pat_..."></div>
+    <div class="row"><button class="btn pri" id="loginBtn">Entrar</button><span class="status" id="loginMsg"></span></div>
+  </section>
+</div></main>
+
+<!-- PAINEL -->
+<div id="appView" hidden>
+  <div class="sticky"><div class="wrap">
+    <span class="status" id="status">Carregando…</span>
+    <span class="dirty" id="dirty" hidden>Alterações não publicadas</span>
+    <button class="btn" id="discardBtn">Descartar</button>
+    <button class="btn pri" id="saveBtn">Salvar e publicar</button>
+  </div></div>
+  <main><div class="wrap">
+    <section class="card2">
+      <h2>Preço geral pelo dólar</h2>
+      <p class="help">Preço de venda = custo em US$ × valor do dólar abaixo. Ao aplicar, todos os produtos com custo em dólar são recalculados de uma vez, menos os que têm <span class="pill man">PREÇO MANUAL</span>.</p>
+      <div class="fldrow">
+        <div class="fld" style="flex:0 1 160px"><label for="dolar">Valor do dólar (R$)</label><input class="inp" type="number" id="dolar" step="0.5" min="1"></div>
+        <button class="btn dark" id="applyDolar">Aplicar a todos</button>
+        <div class="kpi" id="kpi"></div>
+      </div>
+    </section>
+    <section class="card2">
+      <h2>Topo do catálogo e WhatsApp</h2>
+      <div class="fldrow">
+        <div class="fld"><label for="contatoInp">Texto no topo do site</label><input class="inp" id="contatoInp" placeholder="Consulte prazo de entrega"></div>
+        <div class="fld" style="flex:0 1 220px"><label for="waInp">WhatsApp que recebe os orçamentos (com 55 + DDD)</label><input class="inp" id="waInp" inputmode="numeric" placeholder="5588996251812"></div>
+      </div>
+    </section>
+    <section class="card2">
+      <div class="row" style="justify-content:space-between"><h2>Produtos</h2><button class="btn pri" id="newBtn">+ Novo produto</button></div>
+      <div class="fldrow">
+        <div class="fld" style="flex:2 1 240px"><label for="fq">Buscar</label><input class="inp" type="search" id="fq" placeholder="Nome, código ou linha"></div>
+        <div class="fld"><label for="fcat">Categoria</label><select class="inp" id="fcat"><option value="">Todas</option></select></div>
+        <div class="fld"><label for="fshow">Mostrar</label><select class="inp" id="fshow">
+          <option value="">Todos</option><option value="man">Só preço manual</option><option value="off">Só ocultos</option><option value="semi">Só seminovos</option><option value="nac">Só nacionais</option><option value="new">Alterados agora</option></select></div>
+      </div>
+      <div id="plist"></div>
+      <div class="more"><button class="btn" id="moreBtn" hidden>Mostrar mais</button></div>
+    </section>
+    <section class="card2">
+      <h2>Conexão</h2>
+      <p class="help" id="connInfo"></p>
+      <div class="row"><button class="btn" id="logoutBtn">Sair deste aparelho</button></div>
+    </section>
+  </div></main>
+</div>
+
+<!-- FORMULÁRIO DE PRODUTO -->
+<div class="modal" id="form" hidden role="dialog" aria-modal="true" aria-labelledby="ftitle"><div class="box">
+  <div class="row" style="justify-content:space-between"><h2 id="ftitle">Novo produto</h2><button class="x" id="fClose">Fechar ✕</button></div>
+  <div class="photoPick"><div class="tb" id="fThumb"></div>
+    <div class="fld"><label for="fPhoto">Foto (de preferência com fundo branco)</label><input type="file" id="fPhoto" accept="image/*"><span class="help">A foto é reduzida automaticamente antes de enviar.</span></div></div>
+  <div class="fld"><label for="fName">Nome do produto</label><input class="inp" id="fName" placeholder="ex.: Leg press 45° com anilhas"></div>
+  <div class="fldrow">
+    <div class="fld"><label for="fCat">Categoria</label><select class="inp" id="fCat"></select></div>
+    <div class="fld"><label for="fGrp">Tipo</label><input class="inp" id="fGrp" list="grpList" placeholder="escolha ou digite"><datalist id="grpList"></datalist></div>
+    <div class="fld"><label for="fLinha">Linha (opcional)</label><input class="inp" id="fLinha" list="linhaList" placeholder="ex.: Linha 3"><datalist id="linhaList"></datalist></div>
+  </div>
+  <div class="fld"><label for="fSpec">Especificações (opcional)</label><textarea class="inp" id="fSpec" placeholder="Dimensões: ... · Peso: ... · Carga: ..."></textarea></div>
+  <div class="fldrow">
+    <div class="fld"><label>Condição</label><div class="radio"><label><input type="radio" name="fCond" value="novo" checked> Novo</label><label><input type="radio" name="fCond" value="seminovo"> Seminovo revisado</label></div></div>
+    <div class="fld"><label>Origem</label><div class="radio"><label><input type="radio" name="fOrig" value="importado" checked> Importado</label><label><input type="radio" name="fOrig" value="nacional"> Nacional</label></div></div>
+    <div class="fld"><label for="fUnit">Vendido por</label><select class="inp" id="fUnit"><option value="">Unidade</option><option value="kg">Quilo (kg)</option><option value="m">Metro</option></select></div>
+  </div>
+  <div class="fld"><label>Como definir o preço</label><div class="radio"><label><input type="radio" name="fMode" value="usd" checked> Custo em dólar (segue o valor geral do dólar)</label><label><input type="radio" name="fMode" value="brl"> Preço fixo em reais</label></div></div>
+  <div class="fldrow">
+    <div class="fld" id="fUsdBox"><label for="fUsd">Custo em US$</label><input class="inp" type="number" id="fUsd" min="0" step="0.01"></div>
+    <div class="fld" id="fBrlBox"><label for="fBrl">Preço de venda (R$)</label><input class="inp" type="number" id="fBrl" min="0" step="1"></div>
+    <div class="fld"><label>Preço que o cliente vai ver</label><div class="price" id="fPreview" style="padding-top:0">—</div></div>
+  </div>
+  <label class="radio"><label><input type="checkbox" id="fHide"> Ocultar dos clientes (fica salvo, mas não aparece no catálogo)</label></label>
+  <div class="row" style="justify-content:space-between">
+    <button class="btn danger" id="fDelete" hidden>Remover produto</button>
+    <div class="row" style="margin-left:auto"><button class="btn" id="fCancel">Cancelar</button><button class="btn pri" id="fOk">Guardar produto</button></div>
+  </div>
+  <p class="help">"Guardar produto" coloca a mudança na lista. Para os clientes verem, toque em <b>Salvar e publicar</b> no topo.</p>
+</div></div>
+
+<div class="toast" id="toast" hidden></div>
+<script src="comum.js" defer></script>
+<script src="admin.js" defer></script>
+</body>
+</html>
