@@ -13,8 +13,15 @@
   let changed = new Set();
   let shown = PAGE;
   let busy = false;
+  let custOk = false;    // custos.json lido com sucesso do repositório privado
 
   function toast(t, ms) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, ms || 5200); }
+  function banner(html) {
+    let b = $('warn');
+    if (!b) { b = document.createElement('section'); b.id = 'warn'; b.className = 'card2'; b.style.cssText = 'border-color:var(--red);background:color-mix(in srgb,var(--red) 8%,var(--surface))'; const w = document.querySelector('#appView main .wrap'); w.insertBefore(b, w.firstChild); }
+    b.innerHTML = html || ''; b.hidden = !html;
+  }
+  const tokenTail = () => cfg && cfg.token ? '…' + cfg.token.slice(-4) : '';
   function status(t, cls) { const s = $('status'); s.textContent = t; s.className = 'status' + (cls ? ' ' + cls : ''); }
 
   // ---------- GitHub ----------
@@ -139,6 +146,7 @@
   });
   $('applyDolar').addEventListener('click', () => {
     const v = parseFloat($('dolar').value); if (!(v > 0)) { toast('Digite um valor de dólar válido.'); $('dolar').value = cust.dolar; return; }
+    if (!prod.itens.some(it => hasUsd(it.id))) { toast('Nenhum produto tem custo em dólar carregado, então o dólar não muda os preços. Veja o aviso em vermelho no topo.', 8000); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     cust.dolar = v; let n = 0;
     prod.itens.forEach(it => { if (hasUsd(it.id) && !isMan(it.id)) { const old = it.preco; recalc(it); if (old !== it.preco) { n++; changed.add(it.id); } } });
     renderList(); markDirty();
@@ -260,20 +268,24 @@
       const ups = Object.keys(uploads); let k = 0;
       for (const p of ups) { status(`Enviando fotos (${++k}/${ups.length})…`); await putFile(cfg.repo, p, uploads[p], null, 'Foto de produto'); delete uploads[p]; }
       for (const p of [...deletes]) { status('Removendo fotos antigas…'); await delFile(cfg.repo, p, 'Remove foto antiga'); deletes.delete(p); }
-      status('Salvando custos (privado)…');
-      const cr = await putFile(cfg.priv, 'custos.json', b64FromText(JSON.stringify(cust, null, 1)), custSha, 'Atualiza custos');
-      custSha = cr.content.sha;
       status('Publicando catálogo…');
       const txt = prodJson();
-      const pr = await putFile(cfg.repo, 'data/produtos.json', b64FromText(txt), prodSha, 'Atualiza catálogo');
-      prodSha = pr.content.sha; prod.atualizado = new Date().toISOString().slice(0, 10);
+      try { const pr = await putFile(cfg.repo, 'data/produtos.json', b64FromText(txt), prodSha, 'Atualiza catálogo'); prodSha = pr.content.sha; }
+      catch (e) { if (e.status === 403 || e.status === 404) { e.status = 'w'; e.message = 'O token ' + tokenTail() + ' não tem permissão de gravar no repositório "' + cfg.repo + '". No GitHub, edite o token: Repository access com "' + cfg.repo + '" e "' + cfg.priv + '", e Contents = Read and write. Depois toque em "Trocar token" e entre de novo.'; } throw e; }
+      prod.atualizado = new Date().toISOString().slice(0, 10);
       prod.itens.forEach(i => delete i._preview);
+      let custMsg = '';
+      if (custOk) {
+        status('Salvando custos (privado)…');
+        try { const cr = await putFile(cfg.priv, 'custos.json', b64FromText(JSON.stringify(cust, null, 1)), custSha, 'Atualiza custos'); custSha = cr.content.sha; }
+        catch (e) { custMsg = ' Atenção: os custos em dólar não foram salvos (' + errText(e) + ')'; }
+      } else custMsg = ' Os custos em dólar não foram salvos porque a gestão não tem acesso ao repositório "' + cfg.priv + '".';
       snapshot(); changed.clear();
-      status('Publicado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. O site dos clientes atualiza em 1 a 2 minutos.', 'ok');
-      toast('Publicado! Em 1 a 2 minutos os clientes já veem as mudanças.');
+      status('Publicado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '. O site dos clientes atualiza em 1 a 2 minutos.' + custMsg, custMsg ? 'err' : 'ok');
+      toast('Catálogo publicado! Em 1 a 2 minutos os clientes já veem as mudanças.' + custMsg, custMsg ? 9000 : 5200);
       if ($('fshow').value === 'new') $('fshow').value = '';
       renderList();
-    } catch (e) { console.error(e); status(errText(e), 'err'); toast('Não publicou. ' + errText(e), 9000); }
+    } catch (e) { console.error(e); const m = e.status === 'w' ? e.message : errText(e); status('NÃO publicou. ' + m, 'err'); banner('<h2>Não foi publicado</h2><p class="help">' + esc(m) + '</p><div class="row"><button class="btn dark" data-swap>Trocar token</button></div>'); toast('Não publicou. ' + m, 10000); }
     finally { busy = false; $('saveBtn').textContent = 'Salvar e publicar'; markDirty(); }
   });
   $('discardBtn').addEventListener('click', () => {
@@ -292,15 +304,22 @@
       if (e.status === 404) { showLogin('Não encontrei data/produtos.json no repositório "' + cfg.repo + '". Confira o nome do repositório e se a pasta data foi enviada.'); return; }
       showLogin(errText(e)); return;
     }
+    let custErr = '';
     try { const cf = await getFile(cfg.priv, 'custos.json'); custSha = cf.sha; cust = JSON.parse(cf.text); }
     catch (e) {
-      if (e.status === 404) { custSha = null; cust = { dolar: 28, usd: {}, manual: [] }; toast('Não achei custos.json no repositório privado. Os custos em dólar começam vazios; envie o arquivo custos.json para o repositório "' + cfg.priv + '" e recarregue.', 9000); }
-      else { showLogin(errText(e)); return; }
+      if (e.status === 401) { showLogin(errText(e)); return; }
+      custSha = null; cust = { dolar: 28, usd: {}, manual: [] };
+      let semAcesso = true; if (e.status === 404) { try { await gh('GET', `/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.priv)}`); semAcesso = false; } catch (_) { } }
+      custErr = semAcesso
+        ? `O token em uso (${esc(tokenTail())}) não consegue abrir o repositório privado <b>${esc(cfg.priv)}</b>. Por isso os custos em dólar aparecem vazios e o "Aplicar a todos" não muda preços. No GitHub, abra o token, marque <b>${esc(cfg.repo)}</b> e <b>${esc(cfg.priv)}</b> em Repository access com Contents = Read and write. Se gerou um token novo, toque em <b>Trocar token</b> e cole o novo.`
+        : `O repositório <b>${esc(cfg.priv)}</b> abriu, mas não tem o arquivo <b>custos.json</b> na raiz. Envie o custos.json para ele e recarregue a página.`;
     }
+    if (custErr) banner('<h2>Custos em dólar não carregaram</h2><p class="help">' + custErr + '</p><div class="row"><button class="btn dark" data-swap>Trocar token</button><button class="btn" onclick="location.reload()">Recarregar</button></div>'); else banner('');
+    custOk = !custErr;
     cust.usd = cust.usd || {}; cust.manual = cust.manual || []; cust.dolar = +cust.dolar || 28;
     prod.itens = prod.itens || [];
     snapshot();
-    $('connInfo').innerHTML = `Conectado como <b>${esc(cfg.owner)}</b> · site: <b>${esc(cfg.repo)}</b> · custos: <b>${esc(cfg.priv)}</b> (privado).`;
+    $('connInfo').innerHTML = `Conectado como <b>${esc(cfg.owner)}</b> · site: <b>${esc(cfg.repo)}</b> · custos: <b>${esc(cfg.priv)}</b> (privado) · token em uso: <b>${esc(tokenTail())}</b>.`;
     status('Pronto. Os preços dos clientes só mudam quando você toca em "Salvar e publicar".');
     renderAll();
   }
@@ -319,6 +338,7 @@
     try { localStorage.setItem('rc-admin', JSON.stringify(c)); } catch (e) { }
     load();
   });
+  document.addEventListener('click', e => { if (e.target.closest('[data-swap]')) { if (isDirty() && !confirmLeave()) return; try { localStorage.removeItem('rc-admin'); } catch (_) { } const keep = cfg; cfg = Object.assign({}, keep, { token: '' }); prod = null; cust = null; showLogin('Cole o token novo e toque em Entrar.'); $('lToken').value = ''; $('lToken').focus(); } });
   $('logoutBtn').addEventListener('click', () => {
     if (isDirty() && !confirmLeave()) return;
     try { localStorage.removeItem('rc-admin'); } catch (e) { }
