@@ -33,7 +33,11 @@ body{margin:0}
 .btn.sm{font-size:12.5px;padding:7px 10px}
 .btn.ghost{background:transparent}
 .btn.dark{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-@media (max-width:720px){.prow{grid-template-columns:56px minmax(0,1fr) minmax(0,1fr)}.prow .tb{width:56px;height:56px;grid-row:span 2}.prow .main{grid-column:2/-1}.prow .acts{grid-column:1/-1;justify-content:flex-start}}
+.lrow{grid-template-columns:minmax(0,1fr) auto}
+.lrow .nm{font-size:15px}
+.lrow .acts .btn{min-width:38px}
+@media (max-width:720px){.prow{grid-template-columns:56px minmax(0,1fr) minmax(0,1fr)}.prow .tb{width:56px;height:56px;grid-row:span 2}.prow .main{grid-column:2/-1}.prow .acts{grid-column:1/-1;justify-content:flex-start}
+.lrow{grid-template-columns:minmax(0,1fr)}.lrow .main{grid-column:1/-1}.lrow .acts{grid-column:1/-1;justify-content:flex-start}}
 .modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
 .modal .box{background:var(--surface);color:var(--ink);width:min(680px,100%);border-radius:14px;padding:20px 16px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
 .photoPick{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -101,12 +105,17 @@ textarea.inp{min-height:70px;resize:vertical;font:500 14px var(--body)}
       </div>
     </section>
     <section class="card2">
+      <div class="row" style="justify-content:space-between"><h2>Linhas do catálogo</h2><button class="btn" id="newLinha">+ Nova linha</button></div>
+      <p class="help">Linha desligada continua salva aqui, com fotos e preços, mas não aparece para os clientes. Para voltar com ela, toque em <b>Ligar</b> e depois em <b>Salvar e publicar</b>. As setas mudam a ordem em que as linhas aparecem no site.</p>
+      <div id="llist"></div>
+    </section>
+    <section class="card2">
       <div class="row" style="justify-content:space-between"><h2>Produtos</h2><button class="btn pri" id="newBtn">+ Novo produto</button></div>
       <div class="fldrow">
         <div class="fld" style="flex:2 1 240px"><label for="fq">Buscar</label><input class="inp" type="search" id="fq" placeholder="Nome, código ou linha"></div>
         <div class="fld"><label for="fcat">Categoria</label><select class="inp" id="fcat"><option value="">Todas</option></select></div>
         <div class="fld"><label for="fshow">Mostrar</label><select class="inp" id="fshow">
-          <option value="">Todos</option><option value="man">Só preço manual</option><option value="off">Só ocultos</option><option value="semi">Só seminovos</option><option value="nac">Só nacionais</option><option value="new">Alterados agora</option></select></div>
+          <option value="">Todos</option><option value="man">Só preço manual</option><option value="off">Só ocultos</option><option value="loff">Só de linha desligada</option><option value="semi">Só seminovos</option><option value="nac">Só nacionais</option><option value="new">Alterados agora</option></select></div>
       </div>
       <div id="plist"></div>
       <div class="more"><button class="btn" id="moreBtn" hidden>Mostrar mais</button></div>

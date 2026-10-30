@@ -16,6 +16,25 @@ const RC = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const nfmt = q => String(q).replace('.', ',');
   const lnum = l => parseInt(String(l).replace(/\D/g, '')) || 0;
+
+  /* ---- registro de linhas (data/produtos.json -> "linhas") ----
+     Cada linha tem nome e a marca "ativa". Linha desligada continua salva,
+     com fotos e precos, mas nao aparece no catalogo dos clientes.
+     Arquivo sem a chave "linhas": tudo ativo, ordem pelo numero do nome. */
+  let LINHAS = null;
+  function setLinhas(lista) {
+    if (!Array.isArray(lista) || !lista.length) { LINHAS = null; return; }
+    LINHAS = { ordem: {}, ativas: new Set() };
+    lista.forEach((l, i) => {
+      const nome = typeof l === 'string' ? l : l.nome;
+      if (!nome) return;
+      LINHAS.ordem[nome] = (l && l.ordem != null) ? l.ordem : i + 1;
+      if (!l || l.ativa !== false) LINHAS.ativas.add(nome);
+    });
+  }
+  const lordem = n => (LINHAS && LINHAS.ordem[n] != null) ? LINHAS.ordem[n] : 900 + lnum(n);
+  const lativa = n => !n || !LINHAS || LINHAS.ordem[n] == null ? true : LINHAS.ativas.has(n);
+  const linhasDe = () => LINHAS ? Object.keys(LINHAS.ordem).sort((a, b) => lordem(a) - lordem(b)) : [];
   const COND = { novo: 'Novo', seminovo: 'Seminovo revisado' };
   const ORIG = { importado: 'Importado', nacional: 'Nacional' };
 
@@ -110,5 +129,5 @@ const RC = (function () {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); return 'download';
   }
-  return { CATS, GORDER, PREFIX, UNIT, uq, fmt0, fmt2, money, esc, nfmt, lnum, COND, ORIG, photoTag, tags, datas, buildPdf, savePdf };
+  return { CATS, GORDER, PREFIX, UNIT, uq, fmt0, fmt2, money, esc, nfmt, lnum, setLinhas, lordem, lativa, linhasDe, COND, ORIG, photoTag, tags, datas, buildPdf, savePdf };
 })();

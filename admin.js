@@ -1,6 +1,6 @@
 /* RC Equipamentos — gestão do catálogo (salva direto no GitHub) */
 (function () {
-  const { CATS, GORDER, PREFIX, UNIT, money, esc, lnum } = RC;
+  const { CATS, GORDER, PREFIX, UNIT, money, esc, lordem } = RC;
   const API = 'https://api.github.com';
   const $ = id => document.getElementById(id);
   const PAGE = 60;
@@ -72,8 +72,83 @@
   function snapshot() { snapProd = JSON.stringify(prod); snapCust = JSON.stringify(cust); }
   window.addEventListener('beforeunload', e => { if (prod && isDirty()) { e.preventDefault(); e.returnValue = ''; } });
 
-  // ---------- lista ----------
+  // ---------- linhas ----------
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const linhaDe = nome => (prod.linhas || []).find(l => l.nome === nome);
+  const linhaOff = it => !!(it.linha && (linhaDe(it.linha) || {}).ativa === false);
+  const contaLinha = nome => prod.itens.filter(i => i.linha === nome).length;
+
+  // garante o registro de linhas: arquivo antigo, sem a chave, vira registro com tudo ativo
+  function ensureLinhas() {
+    if (!Array.isArray(prod.linhas)) prod.linhas = [];
+    prod.linhas = prod.linhas.filter(l => l && l.nome).map(l => ({ nome: l.nome, ativa: l.ativa !== false }));
+    const faltando = [...new Set(prod.itens.filter(i => i.linha).map(i => i.linha))].filter(n => !linhaDe(n));
+    faltando.sort((a, b) => RC.lnum(a) - RC.lnum(b)).forEach(n => prod.linhas.push({ nome: n, ativa: true }));
+    syncLinhas();
+  }
+  function syncLinhas() { RC.setLinhas(prod.linhas); }
+
+  function lrow(l, i) {
+    const n = contaLinha(l.nome), off = l.ativa === false, total = prod.linhas.length;
+    return `<div class="prow lrow${off ? ' off' : ''}" data-lrow="${esc(l.nome)}">
+      <div class="main"><div class="nm">${esc(l.nome)}</div>
+        <div class="sub"><span>${n} ${n === 1 ? 'produto' : 'produtos'}</span>${off ? '<span class="pill">DESLIGADA</span>' : '<span class="pill">NO CATÁLOGO</span>'}</div></div>
+      <div class="acts">
+        <button class="btn sm ghost" data-lup="${esc(l.nome)}" title="Subir" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn sm ghost" data-ldown="${esc(l.nome)}" title="Descer" ${i === total - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn sm ghost" data-lren="${esc(l.nome)}">Renomear</button>
+        ${n === 0 ? `<button class="btn sm ghost" data-ldel="${esc(l.nome)}">Excluir</button>` : ''}
+        <button class="btn sm dark" data-ltog="${esc(l.nome)}">${off ? 'Ligar' : 'Desligar'}</button></div></div>`;
+  }
+  function renderLinhas() {
+    const a = prod.linhas || [];
+    $('llist').innerHTML = a.length ? a.map(lrow).join('') : `<div class="empty">Nenhuma linha cadastrada. Toque em "+ Nova linha" ou digite o nome da linha ao editar um produto.</div>`;
+  }
+  function renomearLinha(velho, novo) {
+    novo = novo.trim();
+    if (!novo || novo === velho) return false;
+    if (prod.linhas.some(l => l.nome !== velho && norm(l.nome) === norm(novo))) { toast('Já existe uma linha com esse nome.'); return false; }
+    const l = linhaDe(velho); if (!l) return false;
+    l.nome = novo;
+    prod.itens.forEach(i => { if (i.linha === velho) { i.linha = novo; changed.add(i.id); } });
+    syncLinhas(); return true;
+  }
+  $('llist').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const d = b.dataset;
+    if (d.ltog) {
+      const l = linhaDe(d.ltog); if (!l) return;
+      l.ativa = l.ativa === false; syncLinhas(); renderLinhas(); renderList(); markDirty();
+      toast(l.ativa
+        ? `${l.nome} voltou para o catálogo (${contaLinha(l.nome)} produtos). Toque em "Salvar e publicar" para os clientes verem.`
+        : `${l.nome} saiu do catálogo. Os ${contaLinha(l.nome)} produtos continuam salvos aqui. Toque em "Salvar e publicar".`, 7000);
+    }
+    if (d.lup || d.ldown) {
+      const nome = d.lup || d.ldown, i = prod.linhas.findIndex(l => l.nome === nome), j = i + (d.lup ? -1 : 1);
+      if (i < 0 || j < 0 || j >= prod.linhas.length) return;
+      const t = prod.linhas[i]; prod.linhas[i] = prod.linhas[j]; prod.linhas[j] = t;
+      syncLinhas(); renderLinhas(); markDirty();
+    }
+    if (d.lren) {
+      const novo = prompt('Novo nome para a linha "' + d.lren + '":', d.lren);
+      if (novo != null && renomearLinha(d.lren, novo)) { renderLinhas(); renderList(); markDirty(); toast('Linha renomeada. Toque em "Salvar e publicar" para os clientes verem.'); }
+    }
+    if (d.ldel) {
+      if (contaLinha(d.ldel) > 0) { toast('Essa linha tem produtos. Desligue em vez de excluir.'); return; }
+      prod.linhas = prod.linhas.filter(l => l.nome !== d.ldel);
+      syncLinhas(); renderLinhas(); markDirty(); toast('Linha excluída.');
+    }
+  });
+  $('newLinha').addEventListener('click', () => {
+    const nome = (prompt('Nome da nova linha:', 'RC ') || '').trim();
+    if (!nome) return;
+    if (prod.linhas.some(l => norm(l.nome) === norm(nome))) { toast('Já existe uma linha com esse nome.'); return; }
+    prod.linhas.push({ nome, ativa: true });
+    syncLinhas(); renderLinhas(); markDirty();
+    toast(`Linha ${nome} criada. Escolha ela no campo "Linha" ao cadastrar ou editar um produto.`, 6500);
+  });
+
+  // ---------- lista ----------
   function thumb(it) { return `<div class="tb">${it._preview ? `<img class="one" src="${it._preview}" alt="">` : RC.photoTag(it)}</div>`; }
   function filtered() {
     const q = norm($('fq').value.trim()), c = $('fcat').value, s = $('fshow').value;
@@ -81,6 +156,7 @@
       if (c && it.cat !== c) return false;
       if (s === 'man' && !(isMan(it.id) || !hasUsd(it.id))) return false;
       if (s === 'off' && !it.oculto) return false;
+      if (s === 'loff' && !linhaOff(it)) return false;
       if (s === 'semi' && it.cond !== 'seminovo') return false;
       if (s === 'nac' && it.origem !== 'nacional') return false;
       if (s === 'new' && !changed.has(it.id)) return false;
@@ -91,9 +167,10 @@
   function row(it) {
     const usd = hasUsd(it.id), man = usd && isMan(it.id);
     const pill = !usd ? `<span class="pill man">PREÇO FIXO R$</span>` : man ? `<span class="pill man">PREÇO MANUAL</span>` : `<span class="pill">AUTOMÁTICO</span>`;
-    return `<div class="prow${it.oculto ? ' off' : ''}" data-row="${it.id}">${thumb(it)}
+    const loff = linhaOff(it);
+    return `<div class="prow${it.oculto || loff ? ' off' : ''}" data-row="${it.id}">${thumb(it)}
       <div class="main"><div class="nm">${esc(it.name)}</div>
-        <div class="sub"><span>${it.id}</span><span>${esc(it.cat)} · ${esc(it.grp)}${it.linha ? ' · ' + esc(it.linha) : ''}</span>${it.cond === 'seminovo' ? '<span class="tag semi">SEMINOVO</span>' : ''}${it.origem === 'nacional' ? '<span class="tag">NACIONAL</span>' : ''}${pill}${it.oculto ? '<span class="pill">OCULTO</span>' : ''}</div></div>
+        <div class="sub"><span>${it.id}</span><span>${esc(it.cat)} · ${esc(it.grp)}${it.linha ? ' · ' + esc(it.linha) : ''}</span>${it.cond === 'seminovo' ? '<span class="tag semi">SEMINOVO</span>' : ''}${it.origem === 'nacional' ? '<span class="tag">NACIONAL</span>' : ''}${pill}${it.oculto ? '<span class="pill">OCULTO</span>' : ''}${loff ? '<span class="pill">LINHA DESLIGADA</span>' : ''}</div></div>
       <div class="fld"><label for="u-${it.id}">Custo US$</label><input class="inp" type="number" min="0" step="0.01" id="u-${it.id}" data-usd="${it.id}" value="${usd ? cust.usd[it.id] : ''}" placeholder="—"></div>
       <div class="fld"><label for="b-${it.id}">Venda R$${it.unit ? ' ' + UNIT[it.unit] : ''}</label><input class="inp" type="number" min="0" step="${it.unit ? '0.01' : '1'}" id="b-${it.id}" data-brl="${it.id}" value="${it.preco}"></div>
       <div class="acts">${man ? `<button class="btn sm" data-auto="${it.id}" title="Voltar a calcular pelo dólar">Automático</button>` : ''}<button class="btn sm ghost" data-hide="${it.id}">${it.oculto ? 'Mostrar' : 'Ocultar'}</button><button class="btn sm dark" data-edit="${it.id}">Editar</button></div></div>`;
@@ -107,13 +184,14 @@
   function rerow(id) { const el = document.querySelector(`[data-row="${CSS.escape(id)}"]`); const it = byId(id); if (el && it) el.outerHTML = row(it); }
   function renderKpi() {
     if (!prod) return; const I = prod.itens;
-    const n = I.length, off = I.filter(i => i.oculto).length, man = I.filter(i => hasUsd(i.id) && isMan(i.id)).length, semi = I.filter(i => i.cond === 'seminovo').length;
-    $('kpi').innerHTML = `<span><b>${n}</b> produtos</span><span><b>${n - off}</b> visíveis</span><span><b>${man}</b> com preço manual</span><span><b>${semi}</b> seminovos</span>`;
+    const n = I.length, off = I.filter(i => i.oculto || linhaOff(i)).length, man = I.filter(i => hasUsd(i.id) && isMan(i.id)).length, semi = I.filter(i => i.cond === 'seminovo').length;
+    const lOn = (prod.linhas || []).filter(l => l.ativa !== false).length;
+    $('kpi').innerHTML = `<span><b>${n}</b> produtos</span><span><b>${n - off}</b> visíveis</span><span><b>${lOn}</b> de ${(prod.linhas || []).length} linhas no ar</span><span><b>${man}</b> com preço manual</span><span><b>${semi}</b> seminovos</span>`;
   }
   function fillCats() { $('fcat').innerHTML = `<option value="">Todas</option>` + CATS.map(c => `<option>${c}</option>`).join(''); $('fCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join(''); }
   function renderAll() {
     $('dolar').value = cust.dolar; $('contatoInp').value = prod.contato || ''; $('waInp').value = prod.whatsapp || '';
-    renderList(); markDirty();
+    syncLinhas(); renderLinhas(); renderList(); markDirty();
   }
 
   let ft; $('fq').addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => { shown = PAGE; renderList(); }, 150); });
@@ -163,7 +241,7 @@
     const c = $('fCat').value;
     const gs = [...new Set((GORDER[c] || []).concat(prod.itens.filter(i => i.cat === c).map(i => i.grp)))];
     $('grpList').innerHTML = gs.map(g => `<option value="${esc(g)}">`).join('');
-    const ls = [...new Set(prod.itens.filter(i => i.cat === c && i.linha).map(i => i.linha))].sort((a, b) => lnum(a) - lnum(b));
+    const ls = (prod.linhas || []).map(l => l.nome).sort((a, b) => lordem(a) - lordem(b));
     $('linhaList').innerHTML = ls.map(l => `<option value="${esc(l)}">`).join('');
   }
   function formPrice() {
@@ -229,7 +307,12 @@
     if (!name) { toast('Digite o nome do produto.'); $('fName').focus(); return; }
     if (!grp) { toast('Escolha ou digite o tipo do produto.'); $('fGrp').focus(); return; }
     const preco = formPrice(); if (!preco) { toast(radio('fMode') === 'usd' ? 'Digite o custo em dólar.' : 'Digite o preço de venda.'); return; }
-    let linha = $('fLinha').value.trim(); if (/^\d+$/.test(linha)) linha = 'Linha ' + linha;
+    let linha = $('fLinha').value.trim();
+    if (linha) {
+      const ja = (prod.linhas || []).find(l => norm(l.nome) === norm(linha));
+      if (ja) linha = ja.nome;                                   // usa a grafia já cadastrada
+      else { prod.linhas.push({ nome: linha, ativa: true }); syncLinhas(); renderLinhas(); }   // linha nova digitada na hora
+    }
     const it = editing || { id: nextId(cat) };
     Object.assign(it, { cat, grp, name, linha, spec: $('fSpec').value.trim().replace(/\s*\n\s*/g, ' · '), unit: $('fUnit').value, cond: radio('fCond'), origem: radio('fOrig'), preco });
     if ($('fHide').checked) it.oculto = true; else delete it.oculto;
@@ -318,6 +401,7 @@
     custOk = !custErr;
     cust.usd = cust.usd || {}; cust.manual = cust.manual || []; cust.dolar = +cust.dolar || 28;
     prod.itens = prod.itens || [];
+    ensureLinhas();
     snapshot();
     $('connInfo').innerHTML = `Conectado como <b>${esc(cfg.owner)}</b> · site: <b>${esc(cfg.repo)}</b> · custos: <b>${esc(cfg.priv)}</b> (privado) · token em uso: <b>${esc(tokenTail())}</b>.`;
     status('Pronto. Os preços dos clientes só mudam quando você toca em "Salvar e publicar".');

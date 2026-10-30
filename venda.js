@@ -1,6 +1,6 @@
 /* RC Equipamentos — página de vendas (catálogo + orçamento do cliente) */
 (function () {
-  const { CATS, GORDER, UNIT, uq, fmt0, money, esc, nfmt, lnum } = RC;
+  const { CATS, GORDER, UNIT, uq, fmt0, money, esc, nfmt, lordem } = RC;
   const $ = id => document.getElementById(id);
   let DATA = { itens: [], whatsapp: '5588996251812', contato: 'Consulte prazo de entrega' };
   let ITEMS = [], byId = {};
@@ -33,7 +33,7 @@
     if (byLine()) {
       const pool = base.filter(it => !st.grp || it.grp === st.grp);
       const n = {}; pool.forEach(it => { const k = it.linha || '__' + it.grp; n[k] = (n[k] || 0) + 1; });
-      const ls = Object.keys(n).filter(k => !k.startsWith('__')).sort((a, b) => lnum(a) - lnum(b));
+      const ls = Object.keys(n).filter(k => !k.startsWith('__')).sort((a, b) => lordem(a) - lordem(b));
       const extra = ord.filter(g => n['__' + g]);
       $('grps').innerHTML = `<button type="button" class="chip" data-l="" aria-pressed="${!st.linha}">Todas<span class="n">${pool.length}</span></button>` + ls.map(l => `<button type="button" class="chip" data-l="${esc(l)}" aria-pressed="${st.linha === l}">${esc(l)}<span class="n">${n[l]}</span></button>`).join('') + extra.map(g => `<button type="button" class="chip" data-l="${esc('__' + g)}" aria-pressed="${st.linha === '__' + g}">${esc(g)}<span class="n">${n['__' + g]}</span></button>`).join('');
       const gs = ord.filter(g => base.some(it => it.grp === g && (!st.linha || (it.linha || '__' + it.grp) === st.linha)));
@@ -44,7 +44,7 @@
       const n = {}; pool.forEach(it => n[it.grp] = (n[it.grp] || 0) + 1);
       const gs = ord.filter(g => n[g]);
       $('grps').innerHTML = `<button type="button" class="chip" data-g="" aria-pressed="${!st.grp}">Todos<span class="n">${pool.length}</span></button>` + gs.map(g => `<button type="button" class="chip" data-g="${esc(g)}" aria-pressed="${st.grp === g}">${esc(g)}<span class="n">${n[g]}</span></button>`).join('');
-      const ls = [...new Set(base.filter(it => it.linha).map(it => it.linha))].sort((a, b) => lnum(a) - lnum(b));
+      const ls = [...new Set(base.filter(it => it.linha).map(it => it.linha))].sort((a, b) => lordem(a) - lordem(b));
       $('linha').hidden = !ls.length || !!st.q;
       $('linha').innerHTML = `<option value="">Todas as linhas</option>` + ls.map(l => `<option value="${esc(l)}" ${st.linha === l ? 'selected' : ''}>${esc(l)}</option>`).join('');
     }
@@ -62,7 +62,7 @@
     const cnt = a => `${a.length} ${a.length > 1 ? 'itens' : 'item'}`;
     if (byLine() && !st.q) {
       const ord = groupsOf('Força'); const srt = a => a.slice().sort((x, y) => ord.indexOf(x.grp) - ord.indexOf(y.grp));
-      const ls = [...new Set(rows.filter(r => r.linha).map(r => r.linha))].sort((a, b) => lnum(a) - lnum(b));
+      const ls = [...new Set(rows.filter(r => r.linha).map(r => r.linha))].sort((a, b) => lordem(a) - lordem(b));
       ls.forEach(l => { const a = srt(rows.filter(r => r.linha === l)); const tipos = [...new Set(a.map(r => r.grp))].slice(0, 4).join(' · '); html += sec(l, cnt(a) + ' · ' + esc(tipos), a, ' linha'); });
       ord.forEach(g => { const a = rows.filter(r => !r.linha && r.grp === g); if (a.length) html += sec(g, cnt(a), a, ' linha'); });
     } else {
@@ -176,7 +176,9 @@
       if (!r.ok) throw new Error(r.status);
       DATA = Object.assign(DATA, await r.json());
     } catch (e) { $('list').innerHTML = `<div class="empty">Não foi possível carregar o catálogo. Verifique a internet e recarregue a página.</div>`; return; }
-    ITEMS = (DATA.itens || []).filter(i => !i.oculto && i.preco > 0);
+    RC.setLinhas(DATA.linhas);
+    ITEMS = (DATA.itens || []).filter(i => !i.oculto && i.preco > 0 && RC.lativa(i.linha));
+    if (st.linha && !st.linha.startsWith('__') && !ITEMS.some(i => i.linha === st.linha)) st.linha = '';   // linha desligada depois de o cliente ter filtrado por ela
     byId = {}; ITEMS.forEach(i => byId[i.id] = i);
     const temSemi = ITEMS.some(i => i.cond === 'seminovo'); $('conds').parentElement.hidden = !temSemi; if (!temSemi) st.cond = '';
     Object.keys(cart).forEach(k => { if (!byId[k] || !(cart[k] > 0)) delete cart[k]; }); saveCart();
