@@ -35,6 +35,9 @@ body{margin:0}
 .btn.dark{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .lrow{grid-template-columns:minmax(0,1fr) auto}
 .lrow .nm{font-size:15px}
+.lrow.cat .nm{font-size:16px;text-transform:uppercase;letter-spacing:.04em}
+.lrow.grp{padding-left:20px;border-bottom-style:dotted}
+.lrow.grp .nm{font-size:13.5px;font-weight:600}
 .lrow .acts .btn{min-width:38px}
 @media (max-width:720px){.prow{grid-template-columns:56px minmax(0,1fr) minmax(0,1fr)}.prow .tb{width:56px;height:56px;grid-row:span 2}.prow .main{grid-column:2/-1}.prow .acts{grid-column:1/-1;justify-content:flex-start}
 .lrow{grid-template-columns:minmax(0,1fr)}.lrow .main{grid-column:1/-1}.lrow .acts{grid-column:1/-1;justify-content:flex-start}}
@@ -108,6 +111,11 @@ textarea.inp{min-height:70px;resize:vertical;font:500 14px var(--body)}
       <div class="row" style="justify-content:space-between"><h2>Linhas do catálogo</h2><button class="btn" id="newLinha">+ Nova linha</button></div>
       <p class="help">Linha desligada continua salva aqui, com fotos e preços, mas não aparece para os clientes. Para voltar com ela, toque em <b>Ligar</b> e depois em <b>Salvar e publicar</b>. As setas mudam a ordem em que as linhas aparecem no site.</p>
       <div id="llist"></div>
+    </section>
+    <section class="card2">
+      <h2>Categorias e tipos de produto</h2>
+      <p class="help">O resto do catálogo, fora das linhas. Desligar uma <b>categoria</b> tira a aba inteira do site; desligar um <b>tipo</b> tira só aquele grupo. Nada é apagado — é só voltar a ligar e tocar em <b>Salvar e publicar</b>.</p>
+      <div id="slist"></div>
     </section>
     <section class="card2">
       <div class="row" style="justify-content:space-between"><h2>Produtos</h2><button class="btn pri" id="newBtn">+ Novo produto</button></div>

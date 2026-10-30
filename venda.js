@@ -21,7 +21,7 @@
     if (st.linha && (byLine() ? (it.linha || '__' + it.grp) : it.linha) !== st.linha) return false;
     return true;
   }
-  function renderCats() { $('cats').innerHTML = CATS.map(c => `<button type="button" data-c="${c}" aria-pressed="${!st.q && st.cat === c}">${c}</button>`).join(''); }
+  function renderCats() { const cs = CATS.filter(c => ITEMS.some(i => i.cat === c)); $('cats').innerHTML = cs.map(c => `<button type="button" data-c="${c}" aria-pressed="${!st.q && st.cat === c}">${c}</button>`).join(''); $('cats').hidden = cs.length < 2; }
   function renderConds() { $('conds').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === st.cond))); }
   function groupsOf(cat) { const known = GORDER[cat] || []; const extra = [...new Set(ITEMS.filter(i => i.cat === cat && !known.includes(i.grp)).map(i => i.grp))]; return known.concat(extra); }
 
@@ -176,8 +176,9 @@
       if (!r.ok) throw new Error(r.status);
       DATA = Object.assign(DATA, await r.json());
     } catch (e) { $('list').innerHTML = `<div class="empty">Não foi possível carregar o catálogo. Verifique a internet e recarregue a página.</div>`; return; }
-    RC.setLinhas(DATA.linhas);
-    ITEMS = (DATA.itens || []).filter(i => !i.oculto && i.preco > 0 && RC.lativa(i.linha));
+    RC.setLinhas(DATA.linhas); RC.setSecoes(DATA.categorias, DATA.grupos);
+    ITEMS = (DATA.itens || []).filter(i => !i.oculto && i.preco > 0 && RC.visivel(i));
+    if (!ITEMS.some(i => i.cat === st.cat)) { const c = CATS.find(c => ITEMS.some(i => i.cat === c)); if (c) { st.cat = c; st.grp = ''; st.linha = ''; } }   // categoria inteira desligada
     if (st.linha && !st.linha.startsWith('__') && !ITEMS.some(i => i.linha === st.linha)) st.linha = '';   // linha desligada depois de o cliente ter filtrado por ela
     byId = {}; ITEMS.forEach(i => byId[i.id] = i);
     const temSemi = ITEMS.some(i => i.cond === 'seminovo'); $('conds').parentElement.hidden = !temSemi; if (!temSemi) st.cond = '';

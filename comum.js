@@ -35,6 +35,20 @@ const RC = (function () {
   const lordem = n => (LINHAS && LINHAS.ordem[n] != null) ? LINHAS.ordem[n] : 900 + lnum(n);
   const lativa = n => !n || !LINHAS || LINHAS.ordem[n] == null ? true : LINHAS.ativas.has(n);
   const linhasDe = () => LINHAS ? Object.keys(LINHAS.ordem).sort((a, b) => lordem(a) - lordem(b)) : [];
+
+  /* ---- categorias e tipos (chaves "categorias" e "grupos") ----
+     Mesma ideia das linhas: desligar tira do catalogo dos clientes sem apagar nada.
+     Secao que nao esta no registro e tratada como ligada. */
+  let SECOES = null;
+  function setSecoes(cats, grps) {
+    if (!Array.isArray(cats) && !Array.isArray(grps)) { SECOES = null; return; }
+    SECOES = { cat: {}, grp: {} };
+    (cats || []).forEach(c => { if (c && c.nome) SECOES.cat[c.nome] = c.ativa !== false; });
+    (grps || []).forEach(g => { if (g && g.nome) SECOES.grp[(g.cat || '') + '|' + g.nome] = g.ativa !== false; });
+  }
+  const cativa = c => !SECOES || SECOES.cat[c] === undefined ? true : SECOES.cat[c];
+  const gativa = (c, g) => !SECOES || SECOES.grp[c + '|' + g] === undefined ? true : SECOES.grp[c + '|' + g];
+  const visivel = it => lativa(it.linha) && cativa(it.cat) && gativa(it.cat, it.grp);
   const COND = { novo: 'Novo', seminovo: 'Seminovo revisado' };
   const ORIG = { importado: 'Importado', nacional: 'Nacional' };
 
@@ -129,5 +143,5 @@ const RC = (function () {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); return 'download';
   }
-  return { CATS, GORDER, PREFIX, UNIT, uq, fmt0, fmt2, money, esc, nfmt, lnum, setLinhas, lordem, lativa, linhasDe, COND, ORIG, photoTag, tags, datas, buildPdf, savePdf };
+  return { CATS, GORDER, PREFIX, UNIT, uq, fmt0, fmt2, money, esc, nfmt, lnum, setLinhas, lordem, lativa, linhasDe, setSecoes, cativa, gativa, visivel, COND, ORIG, photoTag, tags, datas, buildPdf, savePdf };
 })();

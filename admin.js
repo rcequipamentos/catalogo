@@ -118,7 +118,7 @@
     const d = b.dataset;
     if (d.ltog) {
       const l = linhaDe(d.ltog); if (!l) return;
-      l.ativa = l.ativa === false; syncLinhas(); renderLinhas(); renderList(); markDirty();
+      l.ativa = l.ativa === false; syncLinhas(); syncSecoes(); renderLinhas(); renderSecoes(); renderList(); markDirty();
       toast(l.ativa
         ? `${l.nome} voltou para o catálogo (${contaLinha(l.nome)} produtos). Toque em "Salvar e publicar" para os clientes verem.`
         : `${l.nome} saiu do catálogo. Os ${contaLinha(l.nome)} produtos continuam salvos aqui. Toque em "Salvar e publicar".`, 7000);
@@ -139,6 +139,60 @@
       syncLinhas(); renderLinhas(); markDirty(); toast('Linha excluída.');
     }
   });
+  // ---------- categorias e tipos ----------
+  const catDe = nome => (prod.categorias || []).find(c => c.nome === nome);
+  const grpDe = (cat, nome) => (prod.grupos || []).find(g => g.nome === nome && g.cat === cat);
+  const catOff = it => { const c = catDe(it.cat); return !!(c && c.ativa === false); };
+  const grpOff = it => { const g = grpDe(it.cat, it.grp); return !!(g && g.ativa === false); };
+  const foraDoCatalogo = it => linhaOff(it) || catOff(it) || grpOff(it);
+
+  // monta o registro de categorias e tipos a partir do que existe no catalogo
+  function ensureSecoes() {
+    if (!Array.isArray(prod.categorias)) prod.categorias = [];
+    if (!Array.isArray(prod.grupos)) prod.grupos = [];
+    prod.categorias = prod.categorias.filter(c => c && c.nome).map(c => ({ nome: c.nome, ativa: c.ativa !== false }));
+    prod.grupos = prod.grupos.filter(g => g && g.nome).map(g => ({ nome: g.nome, cat: g.cat || '', ativa: g.ativa !== false }));
+    CATS.forEach(c => { if (prod.itens.some(i => i.cat === c) && !catDe(c)) prod.categorias.push({ nome: c, ativa: true }); });
+    CATS.forEach(c => {
+      const known = GORDER[c] || [];
+      const extras = [...new Set(prod.itens.filter(i => i.cat === c && !known.includes(i.grp)).map(i => i.grp))];
+      known.concat(extras).forEach(g => { if (prod.itens.some(i => i.cat === c && i.grp === g) && !grpDe(c, g)) prod.grupos.push({ nome: g, cat: c, ativa: true }); });
+    });
+    syncSecoes();
+  }
+  function syncSecoes() { RC.setSecoes(prod.categorias, prod.grupos); }
+
+  function srow(nome, n, off, tipo, attr) {
+    return `<div class="prow lrow ${tipo}${off ? ' off' : ''}">
+      <div class="main"><div class="nm">${esc(nome)}</div>
+        <div class="sub"><span>${n} ${n === 1 ? 'produto' : 'produtos'}</span>${off ? '<span class="pill">DESLIGADO</span>' : '<span class="pill">NO CATÁLOGO</span>'}</div></div>
+      <div class="acts"><button class="btn sm dark" ${attr}>${off ? 'Ligar' : 'Desligar'}</button></div></div>`;
+  }
+  function renderSecoes() {
+    let html = '';
+    (prod.categorias || []).forEach(c => {
+      const nc = prod.itens.filter(i => i.cat === c.nome).length;
+      html += srow(c.nome, nc, c.ativa === false, 'cat', `data-ctog="${esc(c.nome)}"`);
+      (prod.grupos || []).filter(g => g.cat === c.nome).forEach(g => {
+        const ng = prod.itens.filter(i => i.cat === c.nome && i.grp === g.nome).length;
+        html += srow(g.nome, ng, g.ativa === false, 'grp', `data-gtog="${esc(c.nome + '||' + g.nome)}"`);
+      });
+    });
+    $('slist').innerHTML = html || `<div class="empty">Nada por aqui ainda.</div>`;
+  }
+  $('slist').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    let alvo = null, nome = '';
+    if (b.dataset.ctog) { alvo = catDe(b.dataset.ctog); nome = 'A categoria ' + b.dataset.ctog; }
+    if (b.dataset.gtog) { const [c, g] = b.dataset.gtog.split('||'); alvo = grpDe(c, g); nome = 'O tipo ' + g; }
+    if (!alvo) return;
+    alvo.ativa = alvo.ativa === false;
+    syncSecoes(); renderSecoes(); renderList(); markDirty();
+    toast(alvo.ativa
+      ? `${nome} voltou para o catálogo. Toque em "Salvar e publicar" para os clientes verem.`
+      : `${nome} saiu do catálogo. Os produtos continuam salvos aqui. Toque em "Salvar e publicar".`, 7000);
+  });
+
   $('newLinha').addEventListener('click', () => {
     const nome = (prompt('Nome da nova linha:', 'RC ') || '').trim();
     if (!nome) return;
@@ -156,7 +210,7 @@
       if (c && it.cat !== c) return false;
       if (s === 'man' && !(isMan(it.id) || !hasUsd(it.id))) return false;
       if (s === 'off' && !it.oculto) return false;
-      if (s === 'loff' && !linhaOff(it)) return false;
+      if (s === 'loff' && !foraDoCatalogo(it)) return false;
       if (s === 'semi' && it.cond !== 'seminovo') return false;
       if (s === 'nac' && it.origem !== 'nacional') return false;
       if (s === 'new' && !changed.has(it.id)) return false;
@@ -167,10 +221,11 @@
   function row(it) {
     const usd = hasUsd(it.id), man = usd && isMan(it.id);
     const pill = !usd ? `<span class="pill man">PREÇO FIXO R$</span>` : man ? `<span class="pill man">PREÇO MANUAL</span>` : `<span class="pill">AUTOMÁTICO</span>`;
-    const loff = linhaOff(it);
-    return `<div class="prow${it.oculto || loff ? ' off' : ''}" data-row="${it.id}">${thumb(it)}
+    const fora = foraDoCatalogo(it);
+    const motivo = linhaOff(it) ? 'LINHA DESLIGADA' : catOff(it) ? 'CATEGORIA DESLIGADA' : grpOff(it) ? 'TIPO DESLIGADO' : '';
+    return `<div class="prow${it.oculto || fora ? ' off' : ''}" data-row="${it.id}">${thumb(it)}
       <div class="main"><div class="nm">${esc(it.name)}</div>
-        <div class="sub"><span>${it.id}</span><span>${esc(it.cat)} · ${esc(it.grp)}${it.linha ? ' · ' + esc(it.linha) : ''}</span>${it.cond === 'seminovo' ? '<span class="tag semi">SEMINOVO</span>' : ''}${it.origem === 'nacional' ? '<span class="tag">NACIONAL</span>' : ''}${pill}${it.oculto ? '<span class="pill">OCULTO</span>' : ''}${loff ? '<span class="pill">LINHA DESLIGADA</span>' : ''}</div></div>
+        <div class="sub"><span>${it.id}</span><span>${esc(it.cat)} · ${esc(it.grp)}${it.linha ? ' · ' + esc(it.linha) : ''}</span>${it.cond === 'seminovo' ? '<span class="tag semi">SEMINOVO</span>' : ''}${it.origem === 'nacional' ? '<span class="tag">NACIONAL</span>' : ''}${pill}${it.oculto ? '<span class="pill">OCULTO</span>' : ''}${motivo ? `<span class="pill">${motivo}</span>` : ''}</div></div>
       <div class="fld"><label for="u-${it.id}">Custo US$</label><input class="inp" type="number" min="0" step="0.01" id="u-${it.id}" data-usd="${it.id}" value="${usd ? cust.usd[it.id] : ''}" placeholder="—"></div>
       <div class="fld"><label for="b-${it.id}">Venda R$${it.unit ? ' ' + UNIT[it.unit] : ''}</label><input class="inp" type="number" min="0" step="${it.unit ? '0.01' : '1'}" id="b-${it.id}" data-brl="${it.id}" value="${it.preco}"></div>
       <div class="acts">${man ? `<button class="btn sm" data-auto="${it.id}" title="Voltar a calcular pelo dólar">Automático</button>` : ''}<button class="btn sm ghost" data-hide="${it.id}">${it.oculto ? 'Mostrar' : 'Ocultar'}</button><button class="btn sm dark" data-edit="${it.id}">Editar</button></div></div>`;
@@ -184,14 +239,14 @@
   function rerow(id) { const el = document.querySelector(`[data-row="${CSS.escape(id)}"]`); const it = byId(id); if (el && it) el.outerHTML = row(it); }
   function renderKpi() {
     if (!prod) return; const I = prod.itens;
-    const n = I.length, off = I.filter(i => i.oculto || linhaOff(i)).length, man = I.filter(i => hasUsd(i.id) && isMan(i.id)).length, semi = I.filter(i => i.cond === 'seminovo').length;
+    const n = I.length, off = I.filter(i => i.oculto || foraDoCatalogo(i)).length, man = I.filter(i => hasUsd(i.id) && isMan(i.id)).length, semi = I.filter(i => i.cond === 'seminovo').length;
     const lOn = (prod.linhas || []).filter(l => l.ativa !== false).length;
     $('kpi').innerHTML = `<span><b>${n}</b> produtos</span><span><b>${n - off}</b> visíveis</span><span><b>${lOn}</b> de ${(prod.linhas || []).length} linhas no ar</span><span><b>${man}</b> com preço manual</span><span><b>${semi}</b> seminovos</span>`;
   }
   function fillCats() { $('fcat').innerHTML = `<option value="">Todas</option>` + CATS.map(c => `<option>${c}</option>`).join(''); $('fCat').innerHTML = CATS.map(c => `<option>${c}</option>`).join(''); }
   function renderAll() {
     $('dolar').value = cust.dolar; $('contatoInp').value = prod.contato || ''; $('waInp').value = prod.whatsapp || '';
-    syncLinhas(); renderLinhas(); renderList(); markDirty();
+    syncLinhas(); syncSecoes(); renderLinhas(); renderSecoes(); renderList(); markDirty();
   }
 
   let ft; $('fq').addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => { shown = PAGE; renderList(); }, 150); });
@@ -401,7 +456,7 @@
     custOk = !custErr;
     cust.usd = cust.usd || {}; cust.manual = cust.manual || []; cust.dolar = +cust.dolar || 28;
     prod.itens = prod.itens || [];
-    ensureLinhas();
+    ensureLinhas(); ensureSecoes();
     snapshot();
     $('connInfo').innerHTML = `Conectado como <b>${esc(cfg.owner)}</b> · site: <b>${esc(cfg.repo)}</b> · custos: <b>${esc(cfg.priv)}</b> (privado) · token em uso: <b>${esc(tokenTail())}</b>.`;
     status('Pronto. Os preços dos clientes só mudam quando você toca em "Salvar e publicar".');
